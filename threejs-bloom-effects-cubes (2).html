@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Three.js Unreal Bloom Example</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@latest/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@latest/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@latest/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@latest/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@latest/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@latest/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@latest/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@latest/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@latest/examples/js/shaders/CopyShader.js"></script>
+
+    <script>
+
+        // Create the scene
+        const scene = new THREE.Scene();
+
+        // Create the camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        // Create the renderer
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Create the cubes
+        const cube1Geometry = new THREE.BoxGeometry(1, 1, 1);
+        const cube1Material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
+        const cube1 = new THREE.Mesh(cube1Geometry, cube1Material);
+        scene.add(cube1);
+
+        const cube2Geometry = new THREE.BoxGeometry(1, 1, 1);
+        const cube2Material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
+        const cube2 = new THREE.Mesh(cube2Geometry, cube2Material);
+        scene.add(cube2);
+
+        const cube3Geometry = new THREE.BoxGeometry(1, 1, 1);
+        const cube3Material = new THREE.MeshPhongMaterial({
+            color: 'red',
+            emissive: 'red',
+            emissiveIntensity: 0.5
+        });
+        const cube3 = new THREE.Mesh(cube3Geometry, cube3Material);
+        scene.add(cube3);
+
+        // Set the initial cube positions
+        cube1.position.set(-2, 0, 0);
+        cube2.position.set(0, 0, 0);
+        cube3.position.set(2, 0, 0);
+
+        // Create random paths for the cubes
+        const paths = [
+            { x: -2, y: 0, z: 0 },
+            { x: -2, y: 2, z: 0 },
+            { x: 0, y: 2, z: 0 },
+            { x: 0, y: 0, z: 0 },
+            { x: 2, y: 0, z: 0 },
+            { x: 2, y: -2, z: 0 },
+            { x: 0, y: -2, z: 0 },
+            { x: 0, y: 0, z: 0 },
+        ];
+
+        let cube1PathIndex = 0;
+        let cube2PathIndex = 2;
+        let cube3PathIndex = 4;
+
+        // Create the ambient light
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        // Create the point light
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(0, 0, 5);
+        scene.add(pointLight);
+
+        // Create the bloom pass
+        const bloomPass = new THREE.UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            1.5, 0.4, 0.85
+        );
+
+        // Create the composer
+        const composer = new THREE.EffectComposer(renderer);
+        composer.addPass(new THREE.RenderPass(scene, camera));
+        composer.addPass(bloomPass);
+
+        // Resize the renderer when the window is resized
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Render the scene
+        function render() {
+            // Update the cube positions
+            cube1.position.set(
+                THREE.MathUtils.lerp(cube1.position.x, paths[cube1PathIndex].x, 0.01),
+                THREE.MathUtils.lerp(cube1.position.y, paths[cube1PathIndex].y, 0.01),
+                THREE.MathUtils.lerp(cube1.position.z, paths[cube1PathIndex].z, 0.01)
+            );
+            cube2.position.set(
+                THREE.MathUtils.lerp(cube2.position.x, paths[cube2PathIndex].x, 0.01),
+                THREE.MathUtils.lerp(cube2.position.y, paths[cube2PathIndex].y, 0.01),
+                THREE.MathUtils.lerp(cube2.position.z, paths[cube2PathIndex].z, 0.01)
+            );
+            cube3.position.set(
+                THREE.MathUtils.lerp(cube3.position.x, paths[cube3PathIndex].x, 0.01),
+                THREE.MathUtils.lerp(cube3.position.y, paths[cube3PathIndex].y, 0.01),
+                THREE.MathUtils.lerp(cube3.position.z, paths[cube3PathIndex].z, 0.01)
+            );
+
+            // Update the cube rotations
+            cube1.rotation.x += 0.01;
+            cube1.rotation.y += 0.01;
+            cube2.rotation.x += 0.01;
+            cube2.rotation.y += 0.01;
+            cube3.rotation.x += 0.01;
+            cube3.rotation.y += 0.01;
+
+            // Update the camera and controls
+            camera.updateProjectionMatrix();
+
+            // Render the scene
+            composer.render();
+
+            // Request the next frame
+            requestAnimationFrame(render);
+        }
+
+        // Start the animation loop
+        render();
+
+    </script>
+
+</body>
+
+</html>
